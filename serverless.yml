@@ -1,0 +1,81 @@
+# serverless.yml
+
+service: tata-test-service
+
+plugins:
+  - serverless-dynamodb-local
+  - serverless-offline #serverless-offline needs to be last in the list
+
+custom:
+  serverless-offline:
+    noPrependStageInUrl: true
+  tableName: "studentst-table-${self:provider.stage}"
+  dynamodb:
+    stages:
+      - dev
+    start:
+      migrate: true
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  lambdaHashingVersion: 20201221
+  #  stage: dev
+  #  region: us-east-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - { "Fn::GetAtt": ["StudentsDynamoDBTable", "Arn"] }
+  environment:
+    STUDENTS_TABLE: ${self:custom.tableName}
+
+functions:
+  getAllPeople:
+    handler: server.handler
+    events:
+      - http:
+          path: /api/v1/people
+          method: GET
+  getPerson:
+    handler: server.handler
+    events:
+      - http:
+          path: /api/v1/people/{proxy+}
+          method: GET
+  getAllStudents:
+    handler: server.handler
+    events:
+      - http:
+          path: /api/v1/students
+          method: GET
+  createStudent:
+    handler: server.handler
+    events:
+      - http:
+          path: /api/v1/students
+          method: POST
+
+resources:
+  Resources:
+    StudentsDynamoDBTable:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        AttributeDefinitions:
+          - 
+            AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - 
+            AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:custom.tableName}
